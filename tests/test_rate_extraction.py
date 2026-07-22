@@ -6,6 +6,7 @@ import pytest
 from src.breathing_models import chest_displacement
 from src.cw_radar import cw_iq
 from src.demodulation import recover_displacement
+from src.fmcw_radar import range_series
 from src.rate_extraction import estimate_bpm, estimate_rate
 
 FS = 200.0
@@ -43,3 +44,15 @@ def test_cw_pipeline_end_to_end():
     recovered = recover_displacement(i, q)
     bpm, _ = estimate_bpm(recovered, FS)
     assert abs(bpm - 15) < 0.6
+
+
+def test_fmcw_cross_validates_cw():
+    """The simplified FMCW range series recovers the same rate as the CW path."""
+    _, d = chest_displacement("normal", duration=120, fs=FS, rate_bpm=18)
+    bpm_fmcw, _ = estimate_bpm(range_series(d, FS), FS)
+
+    i, q = cw_iq(d)
+    bpm_cw, _ = estimate_bpm(recover_displacement(i, q), FS)
+
+    assert abs(bpm_fmcw - bpm_cw) < 0.5
+    assert abs(bpm_fmcw - 18) < 1.0
